@@ -1,5 +1,7 @@
 package StepDefinitions;
 
+import Resources.TestDataBuild;
+import Resources.Utils;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -13,53 +15,31 @@ import org.testng.Assert;
 import pojo.AddPlace;
 import pojo.Location;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
 
-public class StepDefinitionImpl {
+public class StepDefinitionImpl extends Utils {
     RequestSpecification request;
     ResponseSpecification resspec;
     Response response;
+    TestDataBuild data = new TestDataBuild();
 
-    @Given("Add Place Payload")
-    public void add_place_payload() {
-        AddPlace ap = new AddPlace();
-        ap.setAccuracy(50);
-        ap.setName("Frontline house");
-        ap.setPhone_number("(+91) 983 893 3937");
-        ap.setAddress("29, side layout, cohen 09");
-        ap.setWebsite("http://google.com");
-        ap.setLanguage("French-IN");
-        List<String> myList = new ArrayList<>();
-        myList.add("shoe park");
-        myList.add("shop");
-        ap.setTypes(myList);
-
-        Location loc = new Location();
-        loc.setLat(-38.383494);
-        loc.setLng(33.427362);
-        ap.setLocation(loc);
-
-        RequestSpecification reqspec = new RequestSpecBuilder()
-                .setBaseUri("https://rahulshettyacademy.com")
-                .addQueryParam("key", "qaclick123")
-                .setContentType("application/json")
-                .build();
-
-
-        resspec = new ResponseSpecBuilder()
-                .expectStatusCode(200)
-                .expectHeader("Server", "Apache/2.4.52 (Ubuntu)")
-                .expectContentType("application/json")
-                .build();
-
-        request = given()
-                .log().all().spec(reqspec).body(ap);
+    @Given("Add Place Payload with name {string}, language {string}, address {string}")
+    public void add_place_payload_with_name_language_address(String name, String language, String address) throws IOException {
+        request = given().log().all()
+                .spec(requestSpecification()).body(data.AddPlacePayload(name, language, address));
     }
+
     @When("use calls {string} with Post http request")
     public void use_calls_with_post_http_request(String string) {
+        resspec = new ResponseSpecBuilder()
+                .expectStatusCode(200).expectContentType("application/json")
+                .build();
+
         response = request.when()
                 .post("/maps/api/place/add/json")
                 .then()
@@ -76,4 +56,5 @@ public class StepDefinitionImpl {
         Assert.assertEquals(js.getString(keyValue), expectedValue);
 
     }
+
 }
