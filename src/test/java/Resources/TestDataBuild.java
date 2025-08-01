@@ -27,4 +27,11 @@ public class TestDataBuild {
         ap.setLocation(loc);
         return ap;
     }
+
+    public String deletePlacePayload(String place_id) {
+        return """
+                {
+                "place_id":"%s"
+                }""".formatted(place_id);
+    }
 }

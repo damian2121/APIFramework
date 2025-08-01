@@ -1,25 +1,19 @@
 package StepDefinitions;
 
+import Resources.APIResources;
 import Resources.TestDataBuild;
 import Resources.Utils;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import org.testng.Assert;
-import pojo.AddPlace;
-import pojo.Location;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import static io.restassured.RestAssured.given;
 
 public class StepDefinitionImpl extends Utils {
@@ -27,6 +21,7 @@ public class StepDefinitionImpl extends Utils {
     ResponseSpecification resspec;
     Response response;
     TestDataBuild data = new TestDataBuild();
+    static String place_id;
 
     @Given("Add Place Payload with name {string}, language {string}, address {string}")
     public void add_place_payload_with_name_language_address(String name, String language, String address) throws IOException {
@@ -34,27 +29,46 @@ public class StepDefinitionImpl extends Utils {
                 .spec(requestSpecification()).body(data.AddPlacePayload(name, language, address));
     }
 
-    @When("use calls {string} with Post http request")
-    public void use_calls_with_post_http_request(String string) {
+    @When("user calls {string} with {string} http request")
+    public void use_calls_with_post_http_request(String resource, String httpMethod) {
+
         resspec = new ResponseSpecBuilder()
                 .expectStatusCode(200).expectContentType("application/json")
                 .build();
-
-        response = request.when()
-                .post("/maps/api/place/add/json")
-                .then()
+        APIResources resourceAPI = APIResources.valueOf(resource);
+        if (httpMethod.equalsIgnoreCase("POST")) {
+            response = request.when()
+                    .post(resourceAPI.getResource());
+        } else if (httpMethod.equalsIgnoreCase("GET")) {
+            response = request.when()
+                    .get(resourceAPI.getResource());
+        }
+    }
+    @And("the Api call is success with status code {int}")
+    public void the_api_call_is_succes_with_status_code(Integer int1) {
+        response.then()
                 .log().all()
                 .spec(resspec).extract().response();
-    }
-    @Then("the Api call is success with status code {int}")
-    public void the_api_call_is_succes_with_status_code(Integer int1) {
         Assert.assertEquals(response.getStatusCode(), int1, "Status code is not matching");
     }
-    @Then("{string} in response body is {string}")
+    @And("{string} in response body is {string}")
     public void in_response_body_is(String keyValue, String expectedValue) {
-        JsonPath js = new JsonPath(response.asString());
-        Assert.assertEquals(js.getString(keyValue), expectedValue);
+        Assert.assertEquals(getJsonPath(response, keyValue), expectedValue);
 
     }
 
+    @And("verify place_id created maps to {string} using {string}")
+    public void verifyPlace_idCreatedMapsToNameUsingGetPlaceAPI(String name, String resource) throws IOException {
+        place_id = getJsonPath(response, "place_id");
+        request = given().spec(requestSpecification()).queryParam("place_id", place_id);
+        use_calls_with_post_http_request(resource, "GET");
+        String actualName = getJsonPath(response, "name");
+        Assert.assertEquals(actualName, name, "Place name does not match");
+    }
+
+    @Given("DeletePlace Payload")
+    public void delete_place_payload() throws IOException {
+        request = given().spec(requestSpecification())
+                .body(data.deletePlacePayload(place_id));
+    }
 }
